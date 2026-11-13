@@ -127,6 +127,12 @@ MNN Workbench could be downloaded from [MNN's homepage](http://www.mnn.zone), wh
 - Convolution and transposition convolution algorithms are efficient and stable. The Winograd convolution algorithm is widely used to better symmetric convolutions such as 3x3,4x4,5x5,6x6,7x7.
 - Twice speed increase for the new architecture ARM v8.2 with FP16 half-precision calculation support. 2.5 faster to use sdot for ARM v8.2 and VNNI.
 
+### Samsung OpenCL CumSum correction
+
+This fork carries a Samsung-tested correction for MNN's OpenCL `CumSum` path used by Piper's speech encoder. On affected Mali devices, the old kernel read a partially materialized output buffer while computing the running sum, which caused garbled speech. `loop_cumsum_direct` now computes each result from the original input. The correction is implemented in `source/backend/opencl/execution/cl/loop.cl` and selected by `source/backend/opencl/execution/buffer/LoopBufExecution.cpp`.
+
+Validation recorded for the original Piper encoder on a Galaxy S22 Ultra showed all 46 GPU diagnostic checkpoints matching CPU within a 0.5% relative L2 threshold. The generated `loop_mnn_cl.cpp` and `opencl_source_map.hpp` are updated with the source.
+
 ### Ease of use
 - Support use MNN's OP to do numerical calculating like numpy.
 - Support lightweight image process module like OpenCV, which is only 100k.
