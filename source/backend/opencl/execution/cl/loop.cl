@@ -599,7 +599,10 @@ __kernel void loop_cumsum(__private int global_dim0, __private int global_dim1, 
         
         float in0 = 0;
         if(offsets.z != offsets.y){
-            in0 = (float)input0[inputIndex0];
+            // Inclusive CumSum must start from the original input. input0 is
+            // the virtual/output tensor and its seed element may not have
+            // been materialized before this kernel on buffer backends.
+            in0 = (float)input1[inputIndex1 + offsets.y];
         }
         
         for(int i = 0; i < loopNumber; ++i){
@@ -613,4 +616,35 @@ __kernel void loop_cumsum(__private int global_dim0, __private int global_dim1, 
             in0 = out;
         }
     }
+}
+
+// Safe CumSum implementation for contiguous tensors. Each work-item computes
+// one output directly from the original input, avoiding virtual-output seeding
+// and in-place recurrence assumptions that are unreliable on some Mali drivers.
+__kernel void loop_cumsum_direct(__private int global_size,
+                         __global OUTPUT_TYPE* output,
+                         __global INPUT_TYPE* input,
+                         __private const int outside,
+                         __private const int axisLength,
+                         __private const int inside,
+                         __private const int exclusive,
+                         __private const int reverse) {
+    const int gid = get_global_id(0);
+    if (gid >= global_size) return;
+    const int inner = gid % inside;
+    const int axisIndex = (gid / inside) % axisLength;
+    const int outer = gid / (inside * axisLength);
+    float sum = 0.0f;
+    if (reverse) {
+        const int begin = exclusive ? axisIndex + 1 : axisIndex;
+        for (int p = begin; p < axisLength; ++p) {
+            sum += (float)input[(outer * axisLength + p) * inside + inner];
+        }
+    } else {
+        const int end = exclusive ? axisIndex - 1 : axisIndex;
+        for (int p = 0; p <= end; ++p) {
+            sum += (float)input[(outer * axisLength + p) * inside + inner];
+        }
+    }
+    output[gid] = (OUTPUT_TYPE)sum;
 }

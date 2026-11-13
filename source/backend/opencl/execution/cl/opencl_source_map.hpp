@@ -486,7 +486,7 @@ const std::map<std::string, std::string> OpenCLProgramMd5Map = {
     {"gemm_buf", "b030b6eacaf65a54e8eabee2755f892a"},
     {"conv_2d_int", "fd1170d55b6e814b3fb9e0169bcf58a5"},
     {"copy_buffer_to_image2d", "a72ed287711f9bb78a2cfa9726a1fa92"},
-    {"loop", "a2599600173dade5ae43125104f8e7ed"},
+    {"loop", "c5a3ec70e0baa8adc84817c82d5f7022"},
     {"gemm_conv1x1_layout_buf", "c5a4e1a71876be66216033eebba63f2d"},
     {"argmax_buf", "ae4a1ae3461b2758609022ac7569b11b"},
     {"buffer_convert_subgroup_buf", "d968b717e537464a7fa08e742c9a0319"},

@@ -578,36 +578,24 @@ ErrorCode LoopBufExecution::LoopCumsum(const Tensor *output) {
     mOffset[0] = cmd->view()->GetAs<View>(0)->offset();
     mOffset[1] = cmd->view()->GetAs<View>(1)->offset();
     mOffset[2] = cmd->view()->GetAs<View>(2)->offset();
-    unit.kernel = runTime->buildKernel("loop", "loop_cumsum", buildOptions, mOpenCLBackend->getPrecision(), input0, output);
+    unit.kernel = runTime->buildKernel("loop", "loop_cumsum_direct", buildOptions, mOpenCLBackend->getPrecision(), input1, output);
     uint32_t mMaxWorkGroupSize = static_cast<uint32_t>(runTime->getMaxWorkGroupSize(unit.kernel));
-    
-    std::vector<uint32_t> mGlobalWorkSize = {(uint32_t)(x), (uint32_t)(y), (uint32_t)(z)};
+    std::vector<uint32_t> mGlobalWorkSize = {(uint32_t)outputSize, 1, 1};
+    const int axisLength = loopNumber + 1;
+    const int exclusive = (mOffset[2] == mOffset[1]) ? 1 : 0;
+    const int reverse = (mStep[2] < 0) ? 1 : 0;
     uint32_t index = 0;
     cl_int ret = CL_SUCCESS;
-    ret |= unit.kernel->get().setArg(index++, mGlobalWorkSize[0]);
-    ret |= unit.kernel->get().setArg(index++, mGlobalWorkSize[1]);
-    ret |= unit.kernel->get().setArg(index++, mGlobalWorkSize[2]);
-    ret |= unit.kernel->get().setArg(index++, openCLBuffer(output));
-    ret |= unit.kernel->get().setArg(index++, openCLBuffer(input0));
-    ret |= unit.kernel->get().setArg(index++, openCLBuffer(input1));
-    ret |= unit.kernel->get().setArg(index++, mStride_src0[0]);
-    ret |= unit.kernel->get().setArg(index++, mStride_src0[1]);
-    ret |= unit.kernel->get().setArg(index++, mStride_src0[2]);
-    ret |= unit.kernel->get().setArg(index++, mStride_src1[0]);
-    ret |= unit.kernel->get().setArg(index++, mStride_src1[1]);
-    ret |= unit.kernel->get().setArg(index++, mStride_src1[2]);
-    ret |= unit.kernel->get().setArg(index++, mStride_dst[0]);
-    ret |= unit.kernel->get().setArg(index++, mStride_dst[1]);
-    ret |= unit.kernel->get().setArg(index++, mStride_dst[2]);
-    ret |= unit.kernel->get().setArg(index++, loopNumber);
-    ret |= unit.kernel->get().setArg(index++, sizeof(mOffset), mOffset);
-    ret |= unit.kernel->get().setArg(index++, sizeof(mStep), mStep);
     ret |= unit.kernel->get().setArg(index++, outputSize);
-    MNN_CHECK_CL_SUCCESS(ret, "setArg LoopCumsumBufExecution");
-    
-    std::vector<uint32_t> mLocalWorkSize = localWS3DDefault(mGlobalWorkSize, mMaxWorkGroupSize, runTime, "loop_cumsum", unit.kernel, mOpenCLBackend->getCLTuneLevel(), "loop").first;
-    
-    
+    ret |= unit.kernel->get().setArg(index++, openCLBuffer(output));
+    ret |= unit.kernel->get().setArg(index++, openCLBuffer(input1));
+    ret |= unit.kernel->get().setArg(index++, z);
+    ret |= unit.kernel->get().setArg(index++, axisLength);
+    ret |= unit.kernel->get().setArg(index++, y);
+    ret |= unit.kernel->get().setArg(index++, exclusive);
+    ret |= unit.kernel->get().setArg(index++, reverse);
+    MNN_CHECK_CL_SUCCESS(ret, "setArg LoopCumsumDirectBufExecution");
+    std::vector<uint32_t> mLocalWorkSize = localWS3DDefault(mGlobalWorkSize, mMaxWorkGroupSize, runTime, "loop_cumsum_direct", unit.kernel, mOpenCLBackend->getCLTuneLevel(), "loop").first;
     unit.globalWorkSize = {mGlobalWorkSize[0], mGlobalWorkSize[1], mGlobalWorkSize[2]};
     unit.localWorkSize  = {mLocalWorkSize[0], mLocalWorkSize[1], mLocalWorkSize[2]};
     mUnits.emplace_back(unit);
